@@ -1,0 +1,2 @@
+sudo xboxdrv --silent --detach-kernel-driver &
+sudo python ./python/xbox360controller/userControls.py
