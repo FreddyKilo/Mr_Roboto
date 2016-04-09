@@ -344,41 +344,41 @@ class XboxController(threading.Thread):
         return value
     
 #tests
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    #generic call back
-    def controlCallBack(xboxControlId, value):
-        print "Control Id = {}, Value = {}".format(xboxControlId, value)
+#     #generic call back
+#     def controlCallBack(xboxControlId, value):
+#         print "Control Id = {}, Value = {}".format(xboxControlId, value)
 
-    #specific callbacks for the left thumb (X & Y)
-    def leftThumbX(xValue):
-        print "LX {}".format(xValue)
-    def leftThumbY(yValue):
-        print "LY {}".format(yValue)
+#     #specific callbacks for the left thumb (X & Y)
+#     def leftThumbX(xValue):
+#         print "LX {}".format(xValue)
+#     def leftThumbY(yValue):
+#         print "LY {}".format(yValue)
 
-    #setup xbox controller, set out the deadzone and scale, also invert the Y Axis (for some reason in Pygame negative is up - wierd! 
-    xboxCont = XboxController(controlCallBack, deadzone = 30, scale = 100, invertYAxis = True)
+#     #setup xbox controller, set out the deadzone and scale, also invert the Y Axis (for some reason in Pygame negative is up - wierd! 
+#     xboxCont = XboxController(controlCallBack, deadzone = 30, scale = 100, invertYAxis = True)
 
-    #setup the left thumb (X & Y) callbacks
-    xboxCont.setupControlCallback(xboxCont.XboxControls.LTHUMBX, leftThumbX)
-    xboxCont.setupControlCallback(xboxCont.XboxControls.LTHUMBY, leftThumbY)
+#     #setup the left thumb (X & Y) callbacks
+#     xboxCont.setupControlCallback(xboxCont.XboxControls.LTHUMBX, leftThumbX)
+#     xboxCont.setupControlCallback(xboxCont.XboxControls.LTHUMBY, leftThumbY)
 
-    try:
-        #start the controller
-        xboxCont.start()
-        print "xbox controller running"
-        while True:
-            time.sleep(1)
+#     try:
+#         #start the controller
+#         xboxCont.start()
+#         print "xbox controller running"
+#         while True:
+#             time.sleep(1)
 
-    #Ctrl C
-    except KeyboardInterrupt:
-        print "User cancelled"
+#     #Ctrl C
+#     except KeyboardInterrupt:
+#         print "User cancelled"
     
-    #error        
-    except:
-        print "Unexpected error:", sys.exc_info()[0]
-        raise
+#     #error        
+#     except:
+#         print "Unexpected error:", sys.exc_info()[0]
+#         raise
         
-    finally:
-        #stop the controller
-        xboxCont.stop()
+#     finally:
+#         #stop the controller
+#         xboxCont.stop()
