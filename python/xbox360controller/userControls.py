@@ -6,6 +6,7 @@ import os, sys
 import RPi.GPIO as GPIO
 from time import sleep
 from Fart import gas
+from Quote import quote
 
 OFF = 0
 ON = 1
@@ -17,17 +18,22 @@ CAMERA_Y_ANGLE = 90
 CURRENT_X_ANGLE = CAMERA_X_ANGLE
 CURRENT_Y_ANGLE = CAMERA_Y_ANGLE
 
+CURRENT_LEFT_STICK_X = 0
+CURRENT_LEFT_STICK_Y = 0
+
+ANALOG_THRESHOLD = 20
+
 """this sets up the GPIO pins (GPIO.BOARD) to be used
 with a TB6612FNG motor controller as labeled"""
 AIN1 = 3 # left side motor
 AIN2 = 5 # left side motor
-PWMA = 11 # left side PWM
+PWMA = 7 # left side PWM
 
-# BIN1 = 8 # right side motor
-# BIN2 = 10 # right side motor
-# PWMB = 12 # right side PWM
+BIN1 = 8 # right side motor
+BIN2 = 10 # right side motor
+PWMB = 12 # right side PWM
 
-HEAD_LIGHTS = 16
+HEAD_LIGHTS = 11
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
@@ -40,14 +46,14 @@ GPIO.setup(PWMA, GPIO.OUT)
 PWM_A = GPIO.PWM(PWMA, 100)
 PWM_A.start(0)
 
-# GPIO.setup(BIN1, GPIO.OUT)
-# GPIO.setup(BIN2, GPIO.OUT)
-# GPIO.setup(PWMB, GPIO.OUT)
-# PWM_B = GPIO.PWM(PWMB, 100)
-# PWM_B.start(0)
+GPIO.setup(BIN1, GPIO.OUT)
+GPIO.setup(BIN2, GPIO.OUT)
+GPIO.setup(PWMB, GPIO.OUT)
+PWM_B = GPIO.PWM(PWMB, 100)
+PWM_B.start(0)
 
 def controlCallBack(xboxControlId, value):
-    print("Control ID: " + str(xboxControlId))
+    # print("Control ID: " + str(xboxControlId))
     if xboxControlId in list(options):
         options[xboxControlId](value)
 
@@ -62,17 +68,14 @@ def headLights(value):
 
 def passGas(value):
     if value == 1:
-        g = gas()
-        g.randomShat()
+        fart = gas()
+        fart.randomShat()
 
-def switchCamera(value):
-    global CAMERA
-    if CAMERA == OFF and value == 1:
-        os.system("raspivid -f -t 0 -rot 180 &")
-        CAMERA = ON
-    elif CAMERA == ON and value == 1:
-        os.system("sudo killall -9 raspivid")
-        CAMERA = OFF
+def xButton(value):
+    pass
+
+def yButton(value):
+    pass
 
 def cameraNeutralPos(value):
     global CAMERA_Y_ANGLE
@@ -115,17 +118,37 @@ def cameraX(value):
         CURRENT_X_ANGLE = int(output)
 
 def leftStickX(value):
-    pass
+    global CURRENT_LEFT_STICK_X
+    CURRENT_LEFT_STICK_X = value
+    setLeftMotor(value, CURRENT_LEFT_STICK_Y)
+    setRightMotor(value, CURRENT_LEFT_STICK_Y)
 
-def mototTest(value):
-    print value
-    if(value >= 15):
-        if(value > 100):
+def leftStickY(value):
+    global CURRENT_LEFT_STICK_Y
+    CURRENT_LEFT_STICK_Y = value
+    setLeftMotor(CURRENT_LEFT_STICK_X, value)
+    setRightMotor(CURRENT_LEFT_STICK_X, value)
+
+def setLeftMotor(x, y):
+    # Get the speed and direction of the motor based on analog stick position
+    if (y <= 0 and x <= 0) or (y >= 0 and x >= 0): # upper left quadrant or lower right quadrant
+        value = y - x
+    elif (y <= 0 and x >= 0) or (y >= 0 and x <= 0): # upper right quadrant or lower left quadrant
+        if abs(y) > abs(x):
+            value = y
+        else:
+            value = -x
+    else:
+        value = 0
+
+    # Now use the calculated value to set the duty cycle
+    if(value >= ANALOG_THRESHOLD):
+        if(value > 100): # Sometimes the 360 controller will send a value a fraction over 100, we dont want that
             value = 100
         PWM_A.ChangeDutyCycle(value)
         GPIO.output(AIN1, 0)
         GPIO.output(AIN2, 1)
-    elif(value < -15):
+    elif(value <= -ANALOG_THRESHOLD):
         if(value < -100):
             value = -100
         PWM_A.ChangeDutyCycle(value * -1)
@@ -134,14 +157,45 @@ def mototTest(value):
     else:
         PWM_A.ChangeDutyCycle(0)
 
-options = {6 : headLights,       # A
+def setRightMotor(x, y):
+    # Get the speed and direction of the motor based on analog stick position
+    if (y <= 0 and x >= 0) or (y >= 0 and x <= 0): # upper right quadrant or lower left quadrant
+        value = y + x
+    elif (y <= 0 and x <= 0) or (y >= 0 and x >= 0): # upper left quadrant or lower right quadrant
+        if abs(y) > abs(x):
+            value = y
+        else:
+            value = x
+    else:
+        value = 0
+
+    # Now use the calculated value to set the duty cycle
+    if(value >= ANALOG_THRESHOLD):
+        if(value > 100):
+            value = 100
+        PWM_B.ChangeDutyCycle(value)
+        GPIO.output(BIN1, 0)
+        GPIO.output(BIN2, 1)
+    elif(value <= -ANALOG_THRESHOLD):
+        if(value < -100):
+            value = -100
+        PWM_B.ChangeDutyCycle(value * -1)
+        GPIO.output(BIN1, 1)
+        GPIO.output(BIN2, 0)
+    else:
+        PWM_B.ChangeDutyCycle(0)
+
+options = {
+           6 : headLights,       # A
            7 : passGas,          # B
-           1 : mototTest,        # X
-           9 : switchCamera,     # Y
+           8 : xButton,
+           9 : yButton,          # Y
            17: cameraNeutralPos, # D-PAD
+           0 : leftStickX,       # LEFT THUMB X
+           1 : leftStickY,       # LEFT THUMB Y
            2 : cameraX,          # RIGHT THUMB X
-           3 : cameraY,          # RIGHT THUMB Y
-           0 : leftStickX}       # LEFT THUMB X
+           3 : cameraY           # RIGHT THUMB Y
+           }
 
 xbox360 = XboxController.XboxController(controlCallBack, deadzone = 0, scale = 100, invertYAxis = True)
 
