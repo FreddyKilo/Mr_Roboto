@@ -43,9 +43,8 @@ public class BluetoothSerial {
         outputStream.close();
     }
 
-    public void sendData(String data) throws IOException {
-        byte[] bytes = data.getBytes();
-        outputStream.write(bytes);
+    public void sendData(byte[] data) throws IOException {
+        outputStream.write(data);
     }
 
     private BluetoothDevice getDeviceByName(BluetoothAdapter adapter, String name) {
