@@ -21,7 +21,7 @@ CURRENT_Y_ANGLE = CAMERA_Y_ANGLE
 CURRENT_LEFT_STICK_X = 0
 CURRENT_LEFT_STICK_Y = 0
 
-ANALOG_THRESHOLD = 20
+ANALOG_THRESHOLD = 15
 
 """this sets up the GPIO pins (GPIO.BOARD) to be used
 with a TB6612FNG motor controller as labeled"""
@@ -83,19 +83,15 @@ def cameraNeutralPos(value):
     if value[1] == 1 and CAMERA_Y_ANGLE < 170:
         CAMERA_Y_ANGLE += 5
         SERIAL.write("y:" + str(CAMERA_Y_ANGLE))
-        print "Camera angle Y: {}".format(CAMERA_Y_ANGLE)
     elif value[1] == -1 and CAMERA_Y_ANGLE > 10:
         CAMERA_Y_ANGLE -= 5
         SERIAL.write("y:" + str(CAMERA_Y_ANGLE))
-        print "Camera angle Y: {}".format(CAMERA_Y_ANGLE)
     elif value[0] == 1 and CAMERA_X_ANGLE < 170:
         CAMERA_X_ANGLE += 5
         SERIAL.write("x:" + str(CAMERA_X_ANGLE))
-        print "Camera angle X: {}".format(CAMERA_X_ANGLE)
     elif value[0] == -1 and CAMERA_X_ANGLE > 10:
         CAMERA_X_ANGLE -= 5
         SERIAL.write("x:" + str(CAMERA_X_ANGLE))
-        print "Camera angle X: {}".format(CAMERA_X_ANGLE)
 
 def cameraY(value):
     global CAMERA_Y_ANGLE
@@ -103,7 +99,6 @@ def cameraY(value):
     angle = (value/2 + CAMERA_Y_ANGLE)
     output = str(angle).split(".")[0]
     if angle >= 10 and angle <= 170 and int(output) != CURRENT_Y_ANGLE:
-        print("CURRENT_Y_ANGLE: {}\nangle: {}".format(CURRENT_Y_ANGLE, output))
         SERIAL.write("y:" + output)
         CURRENT_Y_ANGLE = int(output)
 
@@ -113,7 +108,6 @@ def cameraX(value):
     angle = (value/1.5 + CAMERA_X_ANGLE)
     output = str(angle).split(".")[0]
     if angle >= 0 and angle <= 180 and int(output) != CURRENT_X_ANGLE:
-        print("CURRENT_X_ANGLE: {}\nangle: {}".format(CURRENT_X_ANGLE, output))
         SERIAL.write("x:" + output)
         CURRENT_X_ANGLE = int(output)
 
