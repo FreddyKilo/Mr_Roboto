@@ -18,15 +18,19 @@ import java.io.IOException;
 public class MotionTracker extends Service implements SensorEventListener {
 
     private static final String TAG = "test";
+    private static final int SERVO_THRESHOLD = 20;
+    private static final int X_AXIS = 0;
+    private static final int Y_AXIS = 2;
 
     private boolean enabled;
     private PowerManager.WakeLock mWakeLock;
     private SensorManager mSensorManager;
-    private Sensor accelerometer;
-    private Sensor orientationSensor;
 
+    private int xRotation;
     private int yRotation;
     private byte[] serialBytes;
+    private float[] accelerometerValues;
+    private float[] magnetometerValues;
 
     private BluetoothSerial bluetoothSerial;
 
@@ -70,10 +74,10 @@ public class MotionTracker extends Service implements SensorEventListener {
      */
     private void setUpSensors() {
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        orientationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+        Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        mSensorManager.registerListener(this, orientationSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
     }
 
     /**
@@ -92,38 +96,84 @@ public class MotionTracker extends Service implements SensorEventListener {
     }
 
     /**
-     * Using the Pololu Micro Maestro servo controller, the rx line accepts a byte array
+     * Using the Pololu Micro Maestro servo controller, the rx pin accepts a byte array
      * where byte 0 is the command, byte 1 is the servo channel, and bytes 2 and 3 are the
      * target of the servo position. This value is in quarter microseconds (range 4000 - 8000)
-     *
-     * @param event
      */
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            serialBytes[1] = 1; // Servo at channel 1
-            // The value received is from -10 to 10, let's convert this to degrees
-            float value2 = (event.values[2] * 11) + 90; // Had to multiply by 11 instead of 9 to calibrate servo movement
+            accelerometerValues = event.values;
+        } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            magnetometerValues = event.values;
+        }
+        float[] values = getOrientation();
+        if(values != null) {
+            setTargetAxisX(values[X_AXIS]);
+            setTargetAxisY(values[Y_AXIS]);
+        }
+    }
 
-            // Let's only send data if the reading changes more than a degree.
+    private float[] getOrientation() {
+        if (accelerometerValues != null && magnetometerValues != null) {
+            float R[] = new float[9];
+            float I[] = new float[9];
+            if (SensorManager.getRotationMatrix(R, I, accelerometerValues, magnetometerValues)) {
+                float orientation[] = new float[3];
+                return SensorManager.getOrientation(R, orientation);
+            }
+        }
+        return null;
+    }
+
+    private void setTargetAxisX(float value) {
+
+        serialBytes[1] = 3; // Servo at channel 3
+
+//        Log.d(TAG, "Orientation X: " + value);
+        float conversion = (value * 1500) + 4000; // Convert the value to a range of 4000 - 8000
+        if (conversion > 4000 && conversion < 8000) {
+            int target = Math.round(conversion);
+            // Let's only send data if the reading changes more than a given amount.
             // This will reduce some jitter caused by noisy accelerometer data
-            if (value2 > yRotation + 1.5 || value2 < yRotation - 1.5) {
-                yRotation = Math.round(value2);
-                int target = (yRotation * 22) + 4800;
+            if (target > xRotation + 50 || target < xRotation - 50) {
+                xRotation = target;
+                Log.d(TAG, String.format("sendData(%d)", target));
+                serialBytes[2] = (byte) (target & 0x7F);
+                serialBytes[3] = (byte) ((target >> 7) & 0x7F);
                 try {
-                    Log.d(TAG, "sendData(): " + target);
-                    serialBytes[2] = (byte) (target & 0x7F);
-                    serialBytes[3] = (byte) ((target >> 7) & 0x7F);
                     bluetoothSerial.sendData(serialBytes);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+        }
 
-        } else if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
-//            Log.d(TAG, "Orientation value 0: " + event.values[0]);
-//            Log.d(TAG, "Orientation value 1: " + event.values[1]);
-//            Log.d(TAG, "Orientation value 2: " + event.values[2]);
+    }
+
+    /**
+     * @param value Orientation input range from 0 (looking down) to -3.14 (looking up)
+     */
+    private void setTargetAxisY(float value) {
+
+        serialBytes[1] = 1; // Servo at channel 1
+
+        float conversion = (value * 2100) + 10500; // Convert the value to a range of 4000 - 8000
+        if (conversion > 4000 && conversion < 8000) {
+            int target = Math.round(conversion);
+            // Let's only send data if the reading changes more than a given amount.
+            // This will reduce some jitter caused by noisy accelerometer data
+            if (target > yRotation + SERVO_THRESHOLD || target < yRotation - SERVO_THRESHOLD) {
+                yRotation = target;
+//                Log.d(TAG, "sendData(): " + target);
+                serialBytes[2] = (byte) (target & 0x7F);
+                serialBytes[3] = (byte) ((target >> 7) & 0x7F);
+                try {
+                    bluetoothSerial.sendData(serialBytes);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
