@@ -23,19 +23,20 @@ public class BluetoothSerial {
 
     public BluetoothSerial() {
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        try {
-            connect();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
-    private void connect() throws IOException {
-        uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-        bluetoothDevice = getDeviceByName(bluetoothAdapter, DEVICE_NAME);
-        bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(uuid);
-        bluetoothSocket.connect();
-        outputStream = bluetoothSocket.getOutputStream();
+    public boolean connectOK() {
+        try{
+            uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+            bluetoothDevice = getDeviceByName(bluetoothAdapter, DEVICE_NAME);
+            bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(uuid);
+            bluetoothSocket.connect();
+            outputStream = bluetoothSocket.getOutputStream();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     public void disconnect() throws IOException {

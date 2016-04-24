@@ -18,7 +18,9 @@ import java.io.IOException;
 public class MotionTracker extends Service implements SensorEventListener {
 
     private static final String TAG = "test";
-    private static final int SERVO_THRESHOLD = 20;
+    private static final int SERVO_THRESHOLD = 1;
+    private static final float ALPHA = 0.2f; //lower alpha should equal smoother movement
+
     private static final int X_AXIS = 0;
     private static final int Y_AXIS = 2;
 
@@ -41,23 +43,23 @@ public class MotionTracker extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!enabled && intent != null) {
-            start();
+        if (!enabled && intent != null && startOK()) {
+            Toast.makeText(this, "STARTING", Toast.LENGTH_SHORT).show();
             return START_STICKY;
         } else {
+            Toast.makeText(this, "STOPPING", Toast.LENGTH_SHORT).show();
             stop();
             return START_NOT_STICKY;
         }
     }
 
-    public void start() {
-        Toast.makeText(this, "STARTING", Toast.LENGTH_SHORT).show();
-        bluetoothSerial = new BluetoothSerial();
+    public boolean startOK() {
         serialBytes = new byte[4];
         serialBytes[0] = (byte) 0x84; // Set target command
         setUpWakeLock();
         setUpSensors();
-        enabled = true;
+        enabled = bluetoothConnectOK();
+        return enabled;
     }
 
     /**
@@ -76,19 +78,30 @@ public class MotionTracker extends Service implements SensorEventListener {
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+    }
+
+    private boolean bluetoothConnectOK() {
+        bluetoothSerial = new BluetoothSerial();
+        if (!bluetoothSerial.connectOK()) {
+            Toast.makeText(this, "Could not connect\nto bluetooth device", Toast.LENGTH_LONG).show();
+            return false;
+        } else {
+            return true;
+        }
     }
 
     /**
      * Unregister sensor listeners, disable wake lock and close the bluetooth connection
      */
     public void stop() {
-        Toast.makeText(this, "STOPPING", Toast.LENGTH_SHORT).show();
         mSensorManager.unregisterListener(this);
         mWakeLock.release();
         try {
-            bluetoothSerial.disconnect();
+            if (bluetoothSerial != null) {
+                bluetoothSerial.disconnect();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -103,15 +116,23 @@ public class MotionTracker extends Service implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            accelerometerValues = event.values;
+            accelerometerValues = applyLowPassFilter(event.values.clone(), accelerometerValues);
         } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-            magnetometerValues = event.values;
+            magnetometerValues = applyLowPassFilter(event.values.clone(), magnetometerValues);
         }
         float[] values = getOrientation();
-        if(values != null) {
+        if (values != null) {
             setTargetAxisX(values[X_AXIS]);
             setTargetAxisY(values[Y_AXIS]);
         }
+    }
+
+    private float[] applyLowPassFilter(float[] input, float[] output) {
+        if (output == null) return input;
+        for (int i = 0; i < input.length; i++) {
+            output[i] = output[i] + ALPHA * (input[i] - output[i]);
+        }
+        return output;
     }
 
     private float[] getOrientation() {
@@ -130,13 +151,14 @@ public class MotionTracker extends Service implements SensorEventListener {
 
         serialBytes[1] = 3; // Servo at channel 3
 
-//        Log.d(TAG, "Orientation X: " + value);
-        float conversion = (value * 1500) + 4000; // Convert the value to a range of 4000 - 8000
+        Log.d(TAG, "Orientation X: " + value);
+        float conversion = (value * 1270) + 4000; // Convert the value to a range of 4000 - 8000
+        Log.d(TAG, "conversion: " + conversion);
         if (conversion > 4000 && conversion < 8000) {
             int target = Math.round(conversion);
             // Let's only send data if the reading changes more than a given amount.
             // This will reduce some jitter caused by noisy accelerometer data
-            if (target > xRotation + 50 || target < xRotation - 50) {
+            if (target > xRotation + SERVO_THRESHOLD || target < xRotation - SERVO_THRESHOLD) {
                 xRotation = target;
                 Log.d(TAG, String.format("sendData(%d)", target));
                 serialBytes[2] = (byte) (target & 0x7F);
@@ -148,7 +170,6 @@ public class MotionTracker extends Service implements SensorEventListener {
                 }
             }
         }
-
     }
 
     /**
@@ -158,21 +179,19 @@ public class MotionTracker extends Service implements SensorEventListener {
 
         serialBytes[1] = 1; // Servo at channel 1
 
-        float conversion = (value * 2100) + 10500; // Convert the value to a range of 4000 - 8000
+        float conversion = (value * 2100) + 10200; // Convert the value to a range of 4000 - 8000
         if (conversion > 4000 && conversion < 8000) {
             int target = Math.round(conversion);
             // Let's only send data if the reading changes more than a given amount.
             // This will reduce some jitter caused by noisy accelerometer data
-            if (target > yRotation + SERVO_THRESHOLD || target < yRotation - SERVO_THRESHOLD) {
-                yRotation = target;
+            yRotation = target;
 //                Log.d(TAG, "sendData(): " + target);
-                serialBytes[2] = (byte) (target & 0x7F);
-                serialBytes[3] = (byte) ((target >> 7) & 0x7F);
-                try {
-                    bluetoothSerial.sendData(serialBytes);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            serialBytes[2] = (byte) (target & 0x7F);
+            serialBytes[3] = (byte) ((target >> 7) & 0x7F);
+            try {
+                bluetoothSerial.sendData(serialBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
