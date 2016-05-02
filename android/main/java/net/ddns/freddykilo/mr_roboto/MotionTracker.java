@@ -10,35 +10,44 @@ import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
-import android.util.Log;
 import android.widget.Toast;
 
 import java.io.IOException;
 
 public class MotionTracker extends Service implements SensorEventListener {
 
-    private static final String TAG = "test";
-    private static final int SERVO_THRESHOLD = 1;
-    private static final float ALPHA = 0.2f; //lower alpha should equal smoother movement
+    private static final String TEST = "test";
+    private static final float ALPHA_X = 0.4f; // lower alpha should equal smoother movement
+    private static final float ALPHA_Y = 0.6f;  // lower alpha should equal smoother movement
+    private static final int X_AXIS_SERVO_NUMBER = 3;
+    private static final int Y_AXIS_SERVO_NUMBER = 1;
 
-    private static final int X_AXIS = 0;
-    private static final int Y_AXIS = 2;
+    private static final int X_AXIS = 0;        // The index of the float[] returned from accelerometer sensor reading
+    private static final int Y_AXIS = 2;        // The index of the float[] returned from magnetometer sensor reading
 
     private boolean enabled;
     private PowerManager.WakeLock mWakeLock;
     private SensorManager mSensorManager;
+    private BluetoothSerial bluetoothSerial;
 
-    private int xRotation;
-    private int yRotation;
-    private byte[] serialBytes;
+    private byte[] targetBytes;
+    private byte[] accelBytes;
     private float[] accelerometerValues;
     private float[] magnetometerValues;
-
-    private BluetoothSerial bluetoothSerial;
+    private float[] R;
+    private float[] I;
+    private float[] orientation;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        targetBytes = new byte[4];
+        accelBytes = new byte[4];
+        targetBytes[0] = (byte) 0x84; // Command byte to set the target of a servo
+        accelBytes[0] = (byte) 0x89;  // Command byte to set the acceleration value of a servo
+        R = new float[9];
+        I = new float[9];
+        orientation = new float[3];
     }
 
     @Override
@@ -54,11 +63,13 @@ public class MotionTracker extends Service implements SensorEventListener {
     }
 
     public boolean startOK() {
-        serialBytes = new byte[4];
-        serialBytes[0] = (byte) 0x84; // Set target command
         setUpWakeLock();
         setUpSensors();
-        enabled = bluetoothConnectOK();
+        if (bluetoothConnectOK()) {
+            setServoAcceleration(0, X_AXIS_SERVO_NUMBER);
+            setServoAcceleration(0, Y_AXIS_SERVO_NUMBER);
+            enabled = true;
+        }
         return enabled;
     }
 
@@ -67,7 +78,7 @@ public class MotionTracker extends Service implements SensorEventListener {
      */
     private void setUpWakeLock() {
         PowerManager mPowerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        mWakeLock = mPowerManager.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK, TAG);
+        mWakeLock = mPowerManager.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK, TEST);
         mWakeLock.acquire();
     }
 
@@ -79,46 +90,46 @@ public class MotionTracker extends Service implements SensorEventListener {
         Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
-        mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+        mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     private boolean bluetoothConnectOK() {
         bluetoothSerial = new BluetoothSerial();
         if (!bluetoothSerial.connectOK()) {
-            Toast.makeText(this, "Could not connect\nto bluetooth device", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Could not connect\nto Mr Roboto", Toast.LENGTH_LONG).show();
             return false;
         } else {
             return true;
         }
     }
 
+    private void setServoAcceleration(int accelerationValue, int servoNumber) {
+        accelBytes[1] = (byte) servoNumber; // Servo channel number
+        accelBytes[2] = (byte) (accelerationValue & 0x7F);
+        accelBytes[3] = (byte) ((accelerationValue >> 7) & 0x7F);
+        try {
+            bluetoothSerial.sendData(accelBytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
-     * Unregister sensor listeners, disable wake lock and close the bluetooth connection
+     * Unregister sensor listeners, disable wake lock and disconnect from bluetooth
      */
     public void stop() {
         mSensorManager.unregisterListener(this);
         mWakeLock.release();
-        try {
-            if (bluetoothSerial != null) {
-                bluetoothSerial.disconnect();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        bluetoothSerial.disconnect();
         enabled = false;
     }
 
-    /**
-     * Using the Pololu Micro Maestro servo controller, the rx pin accepts a byte array
-     * where byte 0 is the command, byte 1 is the servo channel, and bytes 2 and 3 are the
-     * target of the servo position. This value is in quarter microseconds (range 4000 - 8000)
-     */
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            accelerometerValues = applyLowPassFilter(event.values.clone(), accelerometerValues);
+            accelerometerValues = applyLowPassFilter(event.values.clone(), accelerometerValues, ALPHA_Y);
         } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-            magnetometerValues = applyLowPassFilter(event.values.clone(), magnetometerValues);
+            magnetometerValues = applyLowPassFilter(event.values.clone(), magnetometerValues, ALPHA_X);
         }
         float[] values = getOrientation();
         if (values != null) {
@@ -127,47 +138,39 @@ public class MotionTracker extends Service implements SensorEventListener {
         }
     }
 
-    private float[] applyLowPassFilter(float[] input, float[] output) {
+    private float[] applyLowPassFilter(float[] input, float[] output, float alpha) {
         if (output == null) return input;
         for (int i = 0; i < input.length; i++) {
-            output[i] = output[i] + ALPHA * (input[i] - output[i]);
+            output[i] = output[i] + alpha * (input[i] - output[i]);
         }
         return output;
     }
 
     private float[] getOrientation() {
         if (accelerometerValues != null && magnetometerValues != null) {
-            float R[] = new float[9];
-            float I[] = new float[9];
             if (SensorManager.getRotationMatrix(R, I, accelerometerValues, magnetometerValues)) {
-                float orientation[] = new float[3];
                 return SensorManager.getOrientation(R, orientation);
             }
         }
         return null;
     }
 
+    /**
+     * Using the Pololu Micro Maestro servo controller, the rx pin accepts a byte array
+     * where byte 0 is the command, byte 1 is the servo channel, and bytes 2 and 3 are the
+     * target of the servo position. This value is in quarter microseconds (range 4000 - 8000)
+     */
     private void setTargetAxisX(float value) {
-
-        serialBytes[1] = 3; // Servo at channel 3
-
-        Log.d(TAG, "Orientation X: " + value);
-        float conversion = (value * 1270) + 4000; // Convert the value to a range of 4000 - 8000
-        Log.d(TAG, "conversion: " + conversion);
-        if (conversion > 4000 && conversion < 8000) {
+        targetBytes[1] = 3; // Servo at channel 3
+        float conversion = (value * 2000) + 3000; // Convert the value to a range of 4000 - 8000
+        if (conversion >= 4000 && conversion <= 8000) {
             int target = Math.round(conversion);
-            // Let's only send data if the reading changes more than a given amount.
-            // This will reduce some jitter caused by noisy accelerometer data
-            if (target > xRotation + SERVO_THRESHOLD || target < xRotation - SERVO_THRESHOLD) {
-                xRotation = target;
-                Log.d(TAG, String.format("sendData(%d)", target));
-                serialBytes[2] = (byte) (target & 0x7F);
-                serialBytes[3] = (byte) ((target >> 7) & 0x7F);
-                try {
-                    bluetoothSerial.sendData(serialBytes);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            targetBytes[2] = (byte) (target & 0x7F);
+            targetBytes[3] = (byte) ((target >> 7) & 0x7F);
+            try {
+                bluetoothSerial.sendData(targetBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -176,20 +179,14 @@ public class MotionTracker extends Service implements SensorEventListener {
      * @param value Orientation input range from 0 (looking down) to -3.14 (looking up)
      */
     private void setTargetAxisY(float value) {
-
-        serialBytes[1] = 1; // Servo at channel 1
-
+        targetBytes[1] = 1; // Servo at channel 1
         float conversion = (value * 2100) + 10200; // Convert the value to a range of 4000 - 8000
-        if (conversion > 4000 && conversion < 8000) {
+        if (conversion >= 4000 && conversion <= 8000) {
             int target = Math.round(conversion);
-            // Let's only send data if the reading changes more than a given amount.
-            // This will reduce some jitter caused by noisy accelerometer data
-            yRotation = target;
-//                Log.d(TAG, "sendData(): " + target);
-            serialBytes[2] = (byte) (target & 0x7F);
-            serialBytes[3] = (byte) ((target >> 7) & 0x7F);
+            targetBytes[2] = (byte) (target & 0x7F);
+            targetBytes[3] = (byte) ((target >> 7) & 0x7F);
             try {
-                bluetoothSerial.sendData(serialBytes);
+                bluetoothSerial.sendData(targetBytes);
             } catch (IOException e) {
                 e.printStackTrace();
             }

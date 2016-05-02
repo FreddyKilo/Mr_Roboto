@@ -26,9 +26,9 @@ public class BluetoothSerial {
     }
 
     public boolean connectOK() {
-        try{
-            uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-            bluetoothDevice = getDeviceByName(bluetoothAdapter, DEVICE_NAME);
+        uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+        bluetoothDevice = getDeviceByName(bluetoothAdapter, DEVICE_NAME);
+        try {
             bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(uuid);
             bluetoothSocket.connect();
             outputStream = bluetoothSocket.getOutputStream();
@@ -39,9 +39,15 @@ public class BluetoothSerial {
         return true;
     }
 
-    public void disconnect() throws IOException {
-        bluetoothSocket.close();
-        outputStream.close();
+    public void disconnect() {
+        try {
+            if (outputStream != null) outputStream.close();
+            if (bluetoothSocket != null) bluetoothSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        bluetoothDevice = null;
+        bluetoothAdapter = null;
     }
 
     public void sendData(byte[] data) throws IOException {

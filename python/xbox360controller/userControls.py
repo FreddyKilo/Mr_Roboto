@@ -21,7 +21,7 @@ CURRENT_Y_ANGLE = CAMERA_Y_ANGLE
 CURRENT_LEFT_STICK_X = 0
 CURRENT_LEFT_STICK_Y = 0
 
-ANALOG_THRESHOLD = 15
+ANALOG_THRESHOLD = 20
 
 """this sets up the GPIO pins (GPIO.BOARD) to be used
 with a TB6612FNG motor controller as labeled"""
@@ -57,7 +57,7 @@ def controlCallBack(xboxControlId, value):
     if xboxControlId in list(options):
         options[xboxControlId](value)
 
-def headLights(value):
+def aButton(value):
     global LIGHTS
     if LIGHTS == OFF and value == 1:
         GPIO.output(HEAD_LIGHTS, ON)
@@ -66,7 +66,7 @@ def headLights(value):
         GPIO.output(HEAD_LIGHTS, OFF)
         LIGHTS = OFF
 
-def passGas(value):
+def bButton(value):
     if value == 1:
         fart = gas()
         fart.randomShat()
@@ -75,23 +75,19 @@ def xButton(value):
     pass
 
 def yButton(value):
-    pass
+    if value == 1:
+        voice = quote()
+        voice.randomQuote()
 
-def cameraNeutralPos(value):
-    global CAMERA_Y_ANGLE
-    global CAMERA_X_ANGLE
-    if value[1] == 1 and CAMERA_Y_ANGLE < 170:
-        CAMERA_Y_ANGLE += 5
-        SERIAL.write("y:" + str(CAMERA_Y_ANGLE))
-    elif value[1] == -1 and CAMERA_Y_ANGLE > 10:
-        CAMERA_Y_ANGLE -= 5
-        SERIAL.write("y:" + str(CAMERA_Y_ANGLE))
-    elif value[0] == 1 and CAMERA_X_ANGLE < 170:
-        CAMERA_X_ANGLE += 5
-        SERIAL.write("x:" + str(CAMERA_X_ANGLE))
-    elif value[0] == -1 and CAMERA_X_ANGLE > 10:
-        CAMERA_X_ANGLE -= 5
-        SERIAL.write("x:" + str(CAMERA_X_ANGLE))
+def dPad(value):
+    if value[0] == 1:
+        pass
+    elif value[0] == -1:
+        pass
+    elif value[1] == 1:
+        pass
+    elif value[1] == -1:
+        pass
 
 def cameraY(value):
     global CAMERA_Y_ANGLE
@@ -180,18 +176,18 @@ def setRightMotor(x, y):
         PWM_B.ChangeDutyCycle(0)
 
 options = {
-           6 : headLights,       # A
-           7 : passGas,          # B
-           8 : xButton,
+           6 : aButton,       # A
+           7 : bButton,          # B
+           8 : xButton,          # X
            9 : yButton,          # Y
-           17: cameraNeutralPos, # D-PAD
+           17: dPad,             # D-PAD
            0 : leftStickX,       # LEFT THUMB X
            1 : leftStickY,       # LEFT THUMB Y
            2 : cameraX,          # RIGHT THUMB X
            3 : cameraY           # RIGHT THUMB Y
            }
 
-xbox360 = XboxController.XboxController(controlCallBack, deadzone = 0, scale = 100, invertYAxis = True)
+xbox360 = XboxController.XboxController(controlCallBack, deadzone = 20, scale = 100, invertYAxis = True)
 
 try:
     xbox360.start()
