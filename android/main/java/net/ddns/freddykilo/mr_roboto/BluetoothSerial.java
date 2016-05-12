@@ -50,8 +50,12 @@ public class BluetoothSerial {
         bluetoothAdapter = null;
     }
 
-    public void sendData(byte[] data) throws IOException {
-        outputStream.write(data);
+    public void send(byte[] data) {
+        try {
+            outputStream.write(data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private BluetoothDevice getDeviceByName(BluetoothAdapter adapter, String name) {

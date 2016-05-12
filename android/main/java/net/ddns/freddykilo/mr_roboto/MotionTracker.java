@@ -10,49 +10,30 @@ import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
-import android.util.Log;
 import android.widget.Toast;
-
-import java.io.IOException;
 
 public class MotionTracker extends Service implements SensorEventListener {
 
     private static final String TEST = "test";
-    private static final float ALPHA_X = 0.1f; // lower alpha should equal smoother movement
-    private static final float ALPHA_Y = 0.5f; // lower alpha should equal smoother movement
-    private static final int X_AXIS = 0;       // The index of the float[] returned from accelerometer sensor reading
-    private static final int Y_AXIS = 2;       // The index of the float[] returned from magnetometer sensor reading
-    private static final int X_AXIS_SERVO_NUMBER = 3;
-    private static final int Y_AXIS_SERVO_NUMBER = 1;
+    private static final float ALPHA_X = 0.2f; // lower alpha should equal smoother movement
+    private static final float ALPHA_Y = 0.7f; // lower alpha should equal smoother movement
 
-    private float xTarget;
-    private float yTarget;
-    private int xSpeed;
-    private int ySpeed;
-
-    private boolean enabled;
     private PowerManager.WakeLock mWakeLock;
     private SensorManager mSensorManager;
-    private BluetoothSerial bluetoothSerial;
+    private Servo servoX;
+    private Servo servoY;
+    protected static BluetoothSerial bluetoothSerial;
 
-    private byte[] targetBytes;
-    private byte[] speedBytes;
-    private byte[] accelBytes;
+    private boolean enabled;
     private float[] accelerometerValues;
     private float[] magnetometerValues;
+    private float[] orientation;
     private float[] R;
     private float[] I;
-    private float[] orientation;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        targetBytes = new byte[4];
-        speedBytes = new byte[4];
-        accelBytes = new byte[4];
-        targetBytes[0] = (byte) 0x84; // Command byte to set the target of a servo
-        speedBytes[0] = (byte) 0x87;  // Command byte to set the speed of a servo
-        accelBytes[0] = (byte) 0x89;  // Command byte to set the acceleration value of a servo
         R = new float[9];
         I = new float[9];
         orientation = new float[3];
@@ -70,13 +51,15 @@ public class MotionTracker extends Service implements SensorEventListener {
         }
     }
 
-    public boolean startOK() {
+    private boolean startOK() {
         setUpWakeLock();
         setUpSensors();
+        servoX = new Servo(3);
+        servoY = new Servo(1);
         if (bluetoothConnectOK()) {
-            setServoAcceleration(0, X_AXIS_SERVO_NUMBER);
-            setServoAcceleration(0, Y_AXIS_SERVO_NUMBER);
-            setServoSpeed(80, X_AXIS_SERVO_NUMBER);
+            servoX.setAcceleration(0);
+            servoY.setAcceleration(0);
+            servoX.setSpeed(100);
             enabled = true;
         }
         return enabled;
@@ -112,32 +95,10 @@ public class MotionTracker extends Service implements SensorEventListener {
         }
     }
 
-    private void setServoSpeed(int value, int servoNumber) {
-        speedBytes[1] = (byte) servoNumber;
-        speedBytes[2] = (byte) (value & 0x7F);
-        speedBytes[3] = (byte) ((value >> 7) & 0x7F);
-        try {
-            bluetoothSerial.sendData(speedBytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setServoAcceleration(int value, int servoNumber) {
-        accelBytes[1] = (byte) servoNumber;
-        accelBytes[2] = (byte) (value & 0x7F);
-        accelBytes[3] = (byte) ((value >> 7) & 0x7F);
-        try {
-            bluetoothSerial.sendData(accelBytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     /**
      * Unregister sensor listeners, disable wake lock, disconnect from bluetooth, and stop service
      */
-    public void stop() {
+    private void stop() {
         mSensorManager.unregisterListener(this);
         mWakeLock.release();
         bluetoothSerial.disconnect();
@@ -154,8 +115,8 @@ public class MotionTracker extends Service implements SensorEventListener {
         }
         float[] values = getOrientation();
         if (values != null) {
-            setTargetAxisX(values[X_AXIS]);
-            setTargetAxisY(values[Y_AXIS]);
+            setTargetServoX(values[0]);
+            setTargetServoY(values[2]);
         }
     }
 
@@ -176,55 +137,17 @@ public class MotionTracker extends Service implements SensorEventListener {
         return null;
     }
 
-    private void setTargetAxisX(float value) {
-        float target = (value * 2000) + 3000; // Convert the value to quarter-milliseconds
+    private void setTargetServoX(float value) {
+        int target = (int) ((value * 2000) + 3000); // Convert the value to quarter-milliseconds
         if (target >= 1000 && target <= 10000) {
-//            float targetDifference = Math.abs(xTarget - target);
-//            xSpeed = (int) targetDifference;
-//            if (targetDifference >= 10 && xSpeed % 5 == 0) {
-//                Log.d(TEST, "xSpeed: " + xSpeed);
-//                setServoSpeed(xSpeed*2, X_AXIS_SERVO_NUMBER);
-//            }
-            xTarget = target;
-            targetBytes[1] = 3; // Servo at channel 3
-            targetBytes[2] = (byte) (Math.round(xTarget) & 0x7F);
-            targetBytes[3] = (byte) ((Math.round(xTarget) >> 7) & 0x7F);
-            try {
-                bluetoothSerial.sendData(targetBytes);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            servoX.setTarget(target);
         }
     }
 
-    /**
-     * Using the Pololu Micro Maestro servo controller, the rx pin accepts a byte array
-     * where byte 0 is the command, byte 1 is the servo channel, and bytes 2 and 3 are the
-     * target of the servo position. This value is in quarter microseconds (i.e. range 4000 - 8000).
-     * For detailed documentation visit <a href="https://www.pololu.com/docs/0J40/5.e">pololu.com</a>
-     *
-     * @param value Orientation input range from 0 (looking down) to -3.14 (looking up)
-     */
-    private void setTargetAxisY(float value) {
-        float target = (value * 2100) + 10200; // Convert value to quarter-microseconds
+    private void setTargetServoY(float value) {
+        int target = (int) ((value * 2100) + 10200); // Convert value to quarter-microseconds
         if (target >= 3000 && target <= 8000) {
-            float targetDifference = Math.abs(yTarget - target);
-            if (targetDifference >= 20) {
-//                if ((int) targetDifference % 5 == 0 && (int) targetDifference != ySpeed) {
-//                Log.d(TEST, "Speed set Y: " + ySpeed);
-//                    ySpeed = (int) targetDifference;
-//                    setServoSpeed(ySpeed, Y_AXIS_SERVO_NUMBER);
-//                }
-                yTarget = target;
-                targetBytes[1] = 1; // Servo at channel 1
-                targetBytes[2] = (byte) (Math.round(yTarget) & 0x7F);
-                targetBytes[3] = (byte) ((Math.round(yTarget) >> 7) & 0x7F);
-                try {
-                    bluetoothSerial.sendData(targetBytes);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            servoY.setTarget(target);
         }
     }
 
