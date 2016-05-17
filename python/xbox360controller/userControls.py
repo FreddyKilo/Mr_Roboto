@@ -89,6 +89,10 @@ def dPad(value):
     elif value[1] == -1:
         pass
 
+'''
+This functionality has been replaced by a motion tracking Android service. If decide to use,
+the serial output would have to talk to a Pololu Micro Maestro
+'''
 def cameraY(value):
     global CAMERA_Y_ANGLE
     global CURRENT_Y_ANGLE
@@ -98,6 +102,10 @@ def cameraY(value):
         SERIAL.write("y:" + output)
         CURRENT_Y_ANGLE = int(output)
 
+'''
+This functionality has been replaced by a motion tracking Android service. If decide to use,
+the serial output would have to talk to a Pololu Micro Maestro
+'''
 def cameraX(value):
     global CAMERA_X_ANGLE
     global CURRENT_X_ANGLE
@@ -175,16 +183,17 @@ def setRightMotor(x, y):
     else:
         PWM_B.ChangeDutyCycle(0)
 
+# Functions in this map get called by controlCallBack based on the xboxControlId
 options = {
-           6 : aButton,       # A
-           7 : bButton,          # B
-           8 : xButton,          # X
-           9 : yButton,          # Y
-           17: dPad,             # D-PAD
-           0 : leftStickX,       # LEFT THUMB X
-           1 : leftStickY,       # LEFT THUMB Y
-           2 : cameraX,          # RIGHT THUMB X
-           3 : cameraY           # RIGHT THUMB Y
+           6 : aButton,    # A
+           7 : bButton,    # B
+           8 : xButton,    # X
+           9 : yButton,    # Y
+           17: dPad,       # D-PAD
+           0 : leftStickX, # LEFT THUMB X
+           1 : leftStickY, # LEFT THUMB Y
+           2 : cameraX,    # RIGHT THUMB X
+           3 : cameraY     # RIGHT THUMB Y
            }
 
 xbox360 = XboxController.XboxController(controlCallBack, deadzone = 20, scale = 100, invertYAxis = True)
@@ -193,6 +202,7 @@ try:
     xbox360.start()
     print "User controls running..."
     while True:
+        # Add heartbeat here
         sleep(1)
 
 except KeyboardInterrupt:
