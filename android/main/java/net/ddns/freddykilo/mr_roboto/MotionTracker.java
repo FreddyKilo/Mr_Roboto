@@ -16,8 +16,8 @@ import android.widget.Toast;
 public class MotionTracker extends Service implements SensorEventListener {
 
     private static final String TEST = "test";
-    private static final float ALPHA_X = 0.5f; // lower alpha should equal smoother movement
-    private static final float ALPHA_Y = 0.5f; // lower alpha should equal smoother movement
+    private static final float ALPHA_X = 1f; // lower alpha should equal smoother movement
+    private static final float ALPHA_Y = 1f; // lower alpha should equal smoother movement
 
     private PowerManager.WakeLock mWakeLock;
     private SensorManager mSensorManager;
@@ -55,12 +55,8 @@ public class MotionTracker extends Service implements SensorEventListener {
     private boolean startOK() {
         setUpWakeLock();
         setUpSensors();
-        servoX = new Servo(3);
-        servoX.setSmoothness(50);
-        servoX.setSpeed(40);
-        servoY = new Servo(1);
-        servoY.setSmoothness(20);
         if (bluetoothConnectOK()) {
+            setUpServos();
             enabled = true;
         }
         return enabled;
@@ -84,6 +80,19 @@ public class MotionTracker extends Service implements SensorEventListener {
         Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
         mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
+    }
+
+    private void setUpServos() {
+        servoX = new Servo(3);
+        servoY = new Servo(1);
+        servoX.setSmoothness(60);
+        servoY.setSmoothness(24);
+        servoX.setThreshold(20);
+        servoY.setThreshold(10);
+        servoX.setSpeed(80);
+        servoY.setSpeed(80);
+//        servoX.setAcceleration(30);
+//        servoY.setAcceleration(30);
     }
 
     private boolean bluetoothConnectOK() {
@@ -110,11 +119,9 @@ public class MotionTracker extends Service implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-//            accelerometerValues = applyLowPassFilter(event.values.clone(), accelerometerValues, ALPHA_Y);
-            accelerometerValues = event.values;
+            accelerometerValues = applyLowPassFilter(event.values.clone(), accelerometerValues, ALPHA_Y);
         } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
             magnetometerValues = applyLowPassFilter(event.values.clone(), magnetometerValues, ALPHA_X);
-//            magnetometerValues = event.values;
         }
         float[] values = getOrientation();
         if (values != null) {
@@ -141,7 +148,7 @@ public class MotionTracker extends Service implements SensorEventListener {
     }
 
     private void setTargetServoX(float value) {
-        int target = (int) ((value * 2000) + 3000); // Convert the value to quarter-milliseconds
+        int target = (int) ((value * 2000) + 3800); // Convert the value to quarter-milliseconds
         if (target >= 1000 && target <= 10000) {
             if (servoX.setTarget(target)) {
                 Log.d(TEST, "X axis value: " + servoX.getTarget());
@@ -158,7 +165,8 @@ public class MotionTracker extends Service implements SensorEventListener {
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
+        Log.d(TEST, "Sensor : " + sensor.getName());
+        Log.d(TEST, "Accuracy: " + accuracy);
     }
 
     @Nullable

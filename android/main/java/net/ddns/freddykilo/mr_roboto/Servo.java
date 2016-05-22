@@ -14,15 +14,17 @@ public class Servo {
     private int acceleration;
     private int target;
     private int smoothness;
+    private int threshold;
     private LinkedList<Integer> targetQueue;
     private int queueTotal;
     private byte[] command;
 
     /**
-     * A new Servo to control with a Pololu Micro Maestro servo controller
+     * A new Servo controlled with a Pololu Micro Maestro servo controller
      * @param channel The channel number that the servo is connected to
      */
     public Servo(int channel) {
+        threshold = 1;
         command = new byte[4];
         command[1] = (byte) channel;
         targetQueue = new LinkedList<>();
@@ -31,22 +33,21 @@ public class Servo {
     public void setSpeed(int speed) {
         this.speed = speed;
         command[0] = (byte) 0x87;
-        setData(speed);
+        setCommandData(speed);
         MotionTracker.bluetoothSerial.send(command);
     }
 
     public void setAcceleration(int acceleration) {
         this.acceleration = acceleration;
         command[0] = (byte) 0x89;
-        setData(acceleration);
+        setCommandData(acceleration);
         MotionTracker.bluetoothSerial.send(command);
     }
 
     public boolean setTarget(int value) {
-        if (this.target != value) {
-            this.target = getAverageTarget(value);
+        if (Math.abs(target - value) > threshold) {
             command[0] = (byte) 0x84;
-            setData(this.target);
+            setCommandData(getAverageTarget(value));
             MotionTracker.bluetoothSerial.send(command);
             return true;
         }
@@ -57,7 +58,11 @@ public class Servo {
         this.smoothness = value;
     }
 
-    private void setData(int data) {
+    public void setThreshold(int value) {
+        this.threshold = value;
+    }
+
+    private void setCommandData(int data) {
         command[2] = (byte) (data & 0x7F);
         command[3] = (byte) ((data >> 7) & 0x7F);
     }
@@ -68,11 +73,24 @@ public class Servo {
         while (targetQueue.size() > smoothness) {
             queueTotal -= targetQueue.pop();
         }
-        return queueTotal / targetQueue.size();
+        target = queueTotal / targetQueue.size();
+        return target;
+    }
+
+    public int getSpeed() {
+        return speed;
+    }
+
+    public int getAcceleration() {
+        return acceleration;
     }
 
     public int getTarget() {
-        return target;
+        return this.target;
+    }
+
+    public int getSmoothness() {
+        return smoothness;
     }
 
 }
