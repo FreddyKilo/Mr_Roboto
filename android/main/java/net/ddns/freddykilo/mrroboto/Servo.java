@@ -1,4 +1,4 @@
-package net.ddns.freddykilo.mr_roboto;
+package net.ddns.freddykilo.mrroboto;
 
 import java.util.LinkedList;
 
@@ -25,6 +25,7 @@ public class Servo {
      */
     public Servo(int channel) {
         threshold = 1;
+        smoothness = 1;
         command = new byte[4];
         command[1] = (byte) channel;
         targetQueue = new LinkedList<>();

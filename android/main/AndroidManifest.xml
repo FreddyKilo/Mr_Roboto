@@ -1,6 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="net.ddns.freddykilo.mr_roboto">
+    package="net.ddns.freddykilo.mrroboto">
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -9,30 +11,26 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/motion_track_button_on"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <receiver
-            android:name=".WidgetProvider"
-            android:label="@string/app_name">
+        <activity
+            android:name=".StreamViewActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:label="@string/app_name"
+            android:screenOrientation="landscape"
+            android:theme="@style/FullscreenTheme">
             <intent-filter>
-                <action android:name="net.ddns.freddykilo.mr_roboto.service.MOTION_TRACKER" />
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@layout/widget_info" />
-        </receiver>
-
+        </activity>
         <service
             android:name=".MotionTracker"
             android:enabled="true" />
-
     </application>
 
 </manifest>

@@ -1,4 +1,4 @@
-package net.ddns.freddykilo.mr_roboto;
+package net.ddns.freddykilo.mrroboto;
 
 import android.app.Service;
 import android.content.Context;
@@ -16,8 +16,8 @@ import android.widget.Toast;
 public class MotionTracker extends Service implements SensorEventListener {
 
     private static final String TEST = "test";
-    private static final float ALPHA_X = 1f; // lower alpha should equal smoother movement
-    private static final float ALPHA_Y = 1f; // lower alpha should equal smoother movement
+    private static final float ALPHA_X = .6f; // lower alpha should equal smoother movement
+    private static final float ALPHA_Y = .5f; // lower alpha should equal smoother movement
 
     private PowerManager.WakeLock mWakeLock;
     private SensorManager mSensorManager;
@@ -38,6 +38,12 @@ public class MotionTracker extends Service implements SensorEventListener {
         R = new float[9];
         I = new float[9];
         orientation = new float[3];
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        stop();
     }
 
     @Override
@@ -78,20 +84,20 @@ public class MotionTracker extends Service implements SensorEventListener {
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         Sensor accelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         Sensor magnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
         mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     private void setUpServos() {
         servoX = new Servo(3);
         servoY = new Servo(1);
-        servoX.setSmoothness(60);
-        servoY.setSmoothness(24);
-        servoX.setThreshold(20);
-        servoY.setThreshold(10);
-        servoX.setSpeed(80);
-        servoY.setSpeed(80);
-//        servoX.setAcceleration(30);
+        servoX.setSmoothness(32);
+        servoY.setSmoothness(5);
+        servoX.setThreshold(200);
+//        servoY.setThreshold(200);
+//        servoX.setSpeed(0);
+//        servoY.setSpeed(0);
+//        servoX.setAcceleration(0);
 //        servoY.setAcceleration(30);
     }
 
@@ -157,8 +163,8 @@ public class MotionTracker extends Service implements SensorEventListener {
     }
 
     private void setTargetServoY(float value) {
-        int target = (int) ((value * 2100) + 10200); // Convert value to quarter-microseconds
-        if (target >= 3000 && target <= 8000) {
+        int target = (int) ((-value * 2400)) + 1200; // Convert value to quarter-microseconds
+        if (target >= 3000 && target <= 12000) {
             servoY.setTarget(target);
         }
     }

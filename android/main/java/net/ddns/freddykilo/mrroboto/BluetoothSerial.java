@@ -1,4 +1,4 @@
-package net.ddns.freddykilo.mr_roboto;
+package net.ddns.freddykilo.mrroboto;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
