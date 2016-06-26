@@ -6,7 +6,7 @@
 
             window.onload = start;
 
-            var signalling_server_hostname = location.hostname || "192.168.0.21";
+            var signalling_server_hostname = location.hostname || "192.168.43.86";
             var signalling_server_address = signalling_server_hostname + ':' + (location.port || 8080);
             var isFirefox = typeof InstallTrigger !== 'undefined';// Firefox 1.0+
 
@@ -82,7 +82,7 @@
                 if ("WebSocket" in window) {
                     document.documentElement.style.cursor ='wait';
                     var protocol = location.protocol === "https:" ? "wss:" : "ws:";
-                    ws = new WebSocket(protocol + '//' + '192.168.0.21:8080/stream/webrtc');
+                    ws = new WebSocket(protocol + '//' + '192.168.43.86:8080/stream/webrtc');
 
                     function offer(stream) {
                         createPeerConnection();

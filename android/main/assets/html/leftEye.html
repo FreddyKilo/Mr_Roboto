@@ -6,7 +6,7 @@
 
             window.onload = start;
 
-            var signalling_server_hostname = location.hostname || "192.168.0.27";
+            var signalling_server_hostname = location.hostname || "192.168.43.49";
             var signalling_server_address = signalling_server_hostname + ':' + (location.port || 8080);
             var isFirefox = typeof InstallTrigger !== 'undefined';// Firefox 1.0+
 
@@ -82,7 +82,7 @@
                 if ("WebSocket" in window) {
                     document.documentElement.style.cursor ='wait';
                     var protocol = location.protocol === "https:" ? "wss:" : "ws:";
-                    ws = new WebSocket(protocol + '//' + '192.168.0.27:8080/stream/webrtc');
+                    ws = new WebSocket(protocol + '//' + '192.168.43.49:8080/stream/webrtc');
 
                     function offer(stream) {
                         createPeerConnection();
@@ -90,11 +90,7 @@
                             pc.addStream(stream);
                         }
                         var command = {
-                            command_id: "offer",
-                            options: {
-                                force_hw_vcodec: true,
-                                vformat: "20"
-                            }
+                            command_id: "offer"
                         };
                         ws.send(JSON.stringify(command));
                         console.log("offer(), command=" + JSON.stringify(command));

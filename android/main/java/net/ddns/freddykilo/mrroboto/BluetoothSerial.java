@@ -17,7 +17,6 @@ public class BluetoothSerial {
     private BluetoothDevice bluetoothDevice;
     private BluetoothSocket bluetoothSocket;
     private OutputStream outputStream;
-    private UUID uuid;
 
     private static final String DEVICE_NAME = "Mr_Roboto";
 
@@ -26,13 +25,13 @@ public class BluetoothSerial {
     }
 
     public boolean connectOK() {
-        uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+        UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
         bluetoothDevice = getDeviceByName(bluetoothAdapter, DEVICE_NAME);
         try {
             bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(uuid);
             bluetoothSocket.connect();
             outputStream = bluetoothSocket.getOutputStream();
-        } catch (IOException e) {
+        } catch (NullPointerException | IOException e) {
             e.printStackTrace();
             return false;
         }

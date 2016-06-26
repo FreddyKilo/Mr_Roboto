@@ -7,15 +7,18 @@ import android.webkit.WebView;
 
 public class StreamViewActivity extends Activity {
 
+    Intent motionTracker;
     WebView leftEye;
     WebView rightEye;
-    Intent motionTracker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stream_view);
-        setUpWebView();
+        leftEye = (WebView) findViewById(R.id.leftEye);
+        rightEye = (WebView) findViewById(R.id.rightEye);
+        setUpWebView(leftEye, "file:///android_asset/html/leftEye.html");
+        setUpWebView(rightEye, "file:///android_asset/html/rightEye.html");
         startMotionTracker();
     }
 
@@ -27,15 +30,10 @@ public class StreamViewActivity extends Activity {
         stopService(motionTracker);
     }
 
-    private void setUpWebView() {
-        leftEye = (WebView) findViewById(R.id.leftEye);
-        rightEye = (WebView) findViewById(R.id.rightEye);
-        leftEye.getSettings().setJavaScriptEnabled(true);
-        rightEye.getSettings().setJavaScriptEnabled(true);
-        leftEye.getSettings().setAllowFileAccessFromFileURLs(true);
-        rightEye.getSettings().setAllowFileAccessFromFileURLs(true);
-        leftEye.loadUrl("file:///android_asset/html/leftEye.html");
-        rightEye.loadUrl("file:///android_asset/html/rightEye.html");
+    private void setUpWebView(WebView webView, String url) {
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setAllowFileAccessFromFileURLs(true);
+        webView.loadUrl(url);
     }
 
     private void startMotionTracker() {

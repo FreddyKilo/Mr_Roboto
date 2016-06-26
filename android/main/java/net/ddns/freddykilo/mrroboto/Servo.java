@@ -21,6 +21,7 @@ public class Servo {
 
     /**
      * A new Servo controlled with a Pololu Micro Maestro servo controller
+     *
      * @param channel The channel number that the servo is connected to
      */
     public Servo(int channel) {
@@ -45,14 +46,10 @@ public class Servo {
         MotionTracker.bluetoothSerial.send(command);
     }
 
-    public boolean setTarget(int value) {
-        if (Math.abs(target - value) > threshold) {
-            command[0] = (byte) 0x84;
-            setCommandData(getAverageTarget(value));
-            MotionTracker.bluetoothSerial.send(command);
-            return true;
-        }
-        return false;
+    public void setTarget(int value) {
+        command[0] = (byte) 0x84;
+        setCommandData(value);
+        MotionTracker.bluetoothSerial.send(command);
     }
 
     public void setSmoothness(int value) {
