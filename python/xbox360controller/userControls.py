@@ -5,8 +5,7 @@ import serial
 import os, sys
 import RPi.GPIO as GPIO
 from time import sleep
-from Fart import gas
-from Quote import quote
+from SoundBites import soundBite
 
 OFF = 0
 ON = 1
@@ -53,31 +52,30 @@ PWM_B = GPIO.PWM(PWMB, 100)
 PWM_B.start(0)
 
 def controlCallBack(xboxControlId, value):
-    # print("Control ID: " + str(xboxControlId))
+    print("Control ID: " + str(xboxControlId))
     if xboxControlId in list(options):
         options[xboxControlId](value)
 
 def aButton(value):
-    global LIGHTS
-    if LIGHTS == OFF and value == 1:
-        GPIO.output(HEAD_LIGHTS, ON)
-        LIGHTS = ON
-    elif LIGHTS == ON and value == 1:
-        GPIO.output(HEAD_LIGHTS, OFF)
-        LIGHTS = OFF
+    if value == 1:
+        sound = soundBite()
+        sound.randomBite()
 
 def bButton(value):
     if value == 1:
-        fart = gas()
+        fart = soundBite()
         fart.randomShat()
 
 def xButton(value):
+    if value == 1:
+        r2d2 = soundBite()
+        r2d2.playR2d2()
     pass
 
 def yButton(value):
     if value == 1:
-        voice = quote()
-        voice.randomQuote()
+        quote = soundBite()
+        quote.randomQuote()
 
 def dPad(value):
     if value[0] == 1:
@@ -126,6 +124,27 @@ def leftStickY(value):
     CURRENT_LEFT_STICK_Y = value
     setLeftMotor(CURRENT_LEFT_STICK_X, value)
     setRightMotor(CURRENT_LEFT_STICK_X, value)
+
+'''
+Left stick button
+'''
+def lsButton(value):
+    if value == 1:
+        horn = soundBite()
+        horn.playHorn()
+
+'''
+Right stick button
+'''
+def rsButton(value):
+    global LIGHTS
+    if LIGHTS == OFF and value == 1:
+        GPIO.output(HEAD_LIGHTS, ON)
+        LIGHTS = ON
+    elif LIGHTS == ON and value == 1:
+        GPIO.output(HEAD_LIGHTS, OFF)
+        LIGHTS = OFF
+
 
 def setLeftMotor(x, y):
     # Get the speed and direction of the motor based on analog stick position
@@ -189,6 +208,8 @@ options = {
            7 : bButton,    # B
            8 : xButton,    # X
            9 : yButton,    # Y
+           15: lsButton,   # LEFT STICK BUTTON
+           16: rsButton,   # RIGHT STICK BUTTON
            17: dPad,       # D-PAD
            0 : leftStickX, # LEFT THUMB X
            1 : leftStickY, # LEFT THUMB Y
