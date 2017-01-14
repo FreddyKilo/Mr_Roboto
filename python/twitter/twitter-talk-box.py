@@ -24,24 +24,6 @@ def speak(string):
     fileName = "audio.mp3"
     tts = gTTS(text=string, lang="en")
     tts.save("/home/pi/Mr_Roboto/python/twitter/" + fileName)
-    print "\nFile saved!\n"
     os.system("omxplayer {}{}".format("/home/pi/Mr_Roboto/python/twitter/", fileName))
-    print "\nPlayed file\n"
-
-def killOmx(maxProcesses):
-    pidCount = 0
-    pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
-    for pid in pids:
-        try:
-            pidname = open(os.path.join('/proc', pid, 'cmdline'), 'rb').read()
-            if "omxplayer" in pidname:
-                print pidname
-                pidCount+=1
-        except IOError:
-            continue
-
-    if pidCount > maxProcesses:
-        os.system("sudo killall -9 omxplayer.bin")
-
 
 main()
