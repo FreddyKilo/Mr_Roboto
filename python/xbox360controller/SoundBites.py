@@ -5,10 +5,9 @@ class soundBite:
 
     global getUpperBoundFromFiles
     global killOmx
-    global AUDIO_DIRECTORY
+    global play
 
     def __init__(self):
-        AUDIO_DIRECTORY = "/home/pi/Mr_Roboto/audio/"
         killOmx(5)
 
     def randomShat(self):
@@ -18,7 +17,7 @@ class soundBite:
         play("Quote_")
 
     def playHorn(self):
-        os.system("omxplayer " + AUDIO_DIRECTORY + "Horn.mp3 &")
+        os.system("omxplayer /home/pi/Mr_Roboto/audio/Horn.mp3 &")
 
     def playR2d2(self):
         play("R2D2_")
@@ -27,11 +26,11 @@ class soundBite:
         play("Sound_")
 
     def play(filePrefix):
-        os.system("omxplayer " + AUDIO_DIRECTORY + filePrefix + "{}.mp3 &".format(randint(0, getUpperBoundFromFiles(filePrefix))))
+        os.system("omxplayer /home/pi/Mr_Roboto/audio/" + filePrefix + "{}.mp3 &".format(randint(0, getUpperBoundFromFiles(filePrefix))))
 
     def specifyQuote(self, num):
         if num >= 0 and num < 16:
-            os.system("omxplayer " + AUDIO_DIRECTORY + "Quote_{}.mp3 &".format(num))
+            os.system("omxplayer /home/pi/Mr_Roboto/audio/" + "Quote_{}.mp3 &".format(num))
 
     '''
     Count the number of files with filePrefix and return the count minus one.
@@ -39,7 +38,7 @@ class soundBite:
     '''
     def getUpperBoundFromFiles(filePrefix):
         count = -1 # Adjust file count to index number
-        for file in os.listdir(AUDIO_DIRECTORY):
+        for file in os.listdir("/home/pi/Mr_Roboto/audio/"):
             if file.startswith(filePrefix):
                 count+=1
         return count
