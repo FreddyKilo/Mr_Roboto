@@ -2,6 +2,7 @@
 
 import XboxController
 import serial
+import math
 import os, sys
 import RPi.GPIO as GPIO
 from time import sleep
@@ -52,7 +53,7 @@ PWM_B = GPIO.PWM(PWMB, 100)
 PWM_B.start(0)
 
 def controlCallBack(xboxControlId, value):
-    print("Control ID: " + str(xboxControlId))
+    # print("Control ID: " + str(xboxControlId))
     if xboxControlId in list(options):
         options[xboxControlId](value)
 
@@ -116,14 +117,14 @@ def cameraX(value):
 def leftStickX(value):
     global CURRENT_LEFT_STICK_X
     CURRENT_LEFT_STICK_X = value
-    setLeftMotor(value, CURRENT_LEFT_STICK_Y)
     setRightMotor(value, CURRENT_LEFT_STICK_Y)
+    setLeftMotor(value, CURRENT_LEFT_STICK_Y)
 
 def leftStickY(value):
     global CURRENT_LEFT_STICK_Y
     CURRENT_LEFT_STICK_Y = value
-    setLeftMotor(CURRENT_LEFT_STICK_X, value)
     setRightMotor(CURRENT_LEFT_STICK_X, value)
+    setLeftMotor(CURRENT_LEFT_STICK_X, value)
 
 '''
 Left stick button
@@ -146,15 +147,15 @@ def rsButton(value):
         LIGHTS = OFF
 
 
-def setLeftMotor(x, y):
+def setRightMotor(x, y):
     # Get the speed and direction of the motor based on analog stick position
-    if (y <= 0 and x <= 0) or (y >= 0 and x >= 0): # upper left quadrant or lower right quadrant
+    if (y <= 0 and x <= 0) or (y >= 0 and x >= 0): # lower left quadrant or upper right quadrant
         value = y - x
-    elif (y <= 0 and x >= 0) or (y >= 0 and x <= 0): # upper right quadrant or lower left quadrant
-        if abs(y) > abs(x):
-            value = y
+    elif (y <= 0 and x >= 0) or (y >= 0 and x <= 0): # lower right quadrant or upper left quadrant
+        if y > x:
+            value = math.sqrt(x**2 + y**2)
         else:
-            value = -x
+            value = -math.sqrt(x**2 + y**2)
     else:
         value = 0
 
@@ -174,15 +175,15 @@ def setLeftMotor(x, y):
     else:
         PWM_A.ChangeDutyCycle(0)
 
-def setRightMotor(x, y):
+def setLeftMotor(x, y):
     # Get the speed and direction of the motor based on analog stick position
-    if (y <= 0 and x >= 0) or (y >= 0 and x <= 0): # upper right quadrant or lower left quadrant
+    if (y <= 0 and x >= 0) or (y >= 0 and x <= 0): # upper left quadrant or lower right quadrant
         value = y + x
-    elif (y <= 0 and x <= 0) or (y >= 0 and x >= 0): # upper left quadrant or lower right quadrant
-        if abs(y) > abs(x):
-            value = y
+    elif (y <= 0 and x <= 0) or (y >= 0 and x >= 0): # upper right quadrant or lower left quadrant
+        if y > 0:
+            value = math.sqrt(x**2 + y**2)
         else:
-            value = x
+            value = -math.sqrt(x**2 + y**2)
     else:
         value = 0
 
