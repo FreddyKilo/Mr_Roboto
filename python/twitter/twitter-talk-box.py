@@ -14,10 +14,12 @@ stream = TwitterStream(auth=auth, domain='userstream.twitter.com')
 def main():
     for tweet in stream.user():
         text = tweet.get('text')
+        print(text)
         if text is not None:
             if USERNAME in text:
                 text = text[len(USERNAME) + 1:]  # This is the actual message sent to Mr_Roboto
             user = tweet.get('user').get('name') # This is the name of the user that is sending the message
+            # print(text)
             speak(text)
 
 def speak(string):
