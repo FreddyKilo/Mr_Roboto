@@ -8,7 +8,7 @@ class soundBite:
     global play
 
     def __init__(self):
-        killOmx(5)
+        pass
 
     def randomShat(self):
         play("Fart_")
@@ -17,7 +17,7 @@ class soundBite:
         play("Quote_")
 
     def playHorn(self):
-        os.system("omxplayer /home/pi/Mr_Roboto/audio/Horn.mp3 &")
+        play("Horn_")
 
     def playR2d2(self):
         play("R2D2_")
@@ -26,6 +26,7 @@ class soundBite:
         play("Sound_")
 
     def play(filePrefix):
+        killOmx(5)
         os.system("omxplayer /home/pi/Mr_Roboto/audio/" + filePrefix + "{}.mp3 &".format(randint(0, getUpperBoundFromFiles(filePrefix))))
 
     def specifyQuote(self, num):
@@ -37,7 +38,7 @@ class soundBite:
     This int gets passed to randint() for the upper bound index
     '''
     def getUpperBoundFromFiles(filePrefix):
-        count = -1 # Adjust file count to index number
+        count = -1 # The params for randint are lowerBound <= N <= upperBound
         for file in os.listdir("/home/pi/Mr_Roboto/audio/"):
             if file.startswith(filePrefix):
                 count+=1
