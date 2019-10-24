@@ -21,6 +21,9 @@ CURRENT_Y_ANGLE = CAMERA_Y_ANGLE
 CURRENT_LEFT_STICK_X = 0
 CURRENT_LEFT_STICK_Y = 0
 
+BACK_BUTTON_STATE = 0
+START_BUTTON_STATE = 0
+
 ANALOG_THRESHOLD = 20
 
 GPIO.setwarnings(False)
@@ -155,6 +158,22 @@ def rsButton(value):
         LIGHTS = OFF
 
 
+def backButton(value):
+    global START_BUTTON_STATE
+    global BACK_BUTTON_STATE
+    BACK_BUTTON_STATE = value
+    if BACK_BUTTON_STATE == 1 and START_BUTTON_STATE == 1:
+        os.system("sudo shutdown -h now")
+
+
+def startButton(value):
+    global START_BUTTON_STATE
+    global BACK_BUTTON_STATE
+    START_BUTTON_STATE = value
+    if BACK_BUTTON_STATE == 1 and START_BUTTON_STATE == 1:
+        os.system("sudo shutdown -h now")
+
+
 def mapValue(value):
     mappedValue = (100.0 / (100 - ANALOG_THRESHOLD)) * (value - ANALOG_THRESHOLD)
     if (mappedValue > 100.0): # Dont return anything over 100, pwm duty cycle no likey
@@ -224,6 +243,8 @@ options = {
     7: bButton,  # B
     8: xButton,  # X
     9: yButton,  # Y
+    12: backButton,
+    13: startButton,
     15: lsButton,  # LEFT STICK BUTTON
     16: rsButton,  # RIGHT STICK BUTTON
     17: dPad,  # D-PAD
